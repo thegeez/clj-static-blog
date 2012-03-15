@@ -65,7 +65,10 @@
 (defn build-post-page [template-html post-data]
   (render (e/at template-html
                 [:div#content]
-                (e/content (:html post-data)))))
+                (e/content
+                 (e/at (:html post-data)
+                       [:h1#post-title]
+                       (e/after (:date-print post-data)))))))
 
 (defn build-index-page [template-html post-list-template posts]
   (render (e/at template-html
