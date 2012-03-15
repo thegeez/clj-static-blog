@@ -44,9 +44,10 @@
                     list-files
                     (filter #(re-find #"\d{4}/\d{2}/\d{2}" (.getAbsolutePath %))))
           :let [path (.getAbsolutePath post-path)
-                [_ YYYY MM DD filename] (re-matches #".*/(\d{4})/(\d{2})/(\d{2})/(.*)" path)]]
+                [_ YYYY MM DD filename] (re-matches #".*/(\d{4})/(\d{2})/(\d{2})/(.*)" path)]
+          :let [[YYYY MM DD] (map #(Long/parseLong %) [YYYY MM DD])]]
       {:date [YYYY MM DD]
-       :date-print (time-format/unparse date-print-format (time/date-time (Integer/parseInt YYYY) (Integer/parseInt MM) (Integer/parseInt DD)))
+       :date-print (time-format/unparse date-print-format (time/date-time YYYY MM DD))
        :filename filename
        :path path
        :page-path (str/join "/" [YYYY MM DD filename])})))
@@ -71,7 +72,9 @@
                 [:div#content]
                 (e/substitute
                  (e/at post-list-template
-                       [[:li.entry (e/nth-of-type 1)]]
+                       [[:li.entry (e/but e/first-child)]]
+                       (e/substitute)
+                       [[:li.entry e/first-child]]
                        (e/clone-for [{:keys [date-print post-title page-path]} posts]
                                     [:div.date] (e/content date-print)
                                     [:div.post-title :a] (e/do->
@@ -90,7 +93,7 @@
                                     [:title] (e/content post-title)
                                     [:link] (append-attr :href page-path)
                                     [:updated] (let [[YYYY MM DD] date]
-                                                 (e/content (time-print (time/date-time (Integer/parseInt YYYY) (Integer/parseInt MM) (Integer/parseInt DD)))))
+                                                 (e/content (time-print (time/date-time YYYY MM DD))))
                                     [:id] (e/append page-path)
                                     [:content] (e/content (render html))))))))
 
@@ -116,7 +119,44 @@
           (let [page (build-post-page template-html post-data)
                 [YYYY MM DD] (:date post-data)
                 filename (:filename post-data)]
-            (write-page (io/file target YYYY MM DD) filename page))))
+            (write-page (io/file target (str YYYY) (str MM) (str DD)) filename page))))
       (let [atom-xml (e/html-resource (io/file source "_atom.xml"))
             feed (build-atom-feed atom-xml posts)]
         (write-page target "atom.xml" feed)))))
+
+(comment
+  ;; html is seq of {:tag :attrs :content}
+  (def html (e/html-resource (io/file "/path/to/source/_postlist.html")))
+  ;; => ({:tag :html, :attrs nil, :content ({:tag :body, :attrs nil,
+  ;; :content ({:tag ...
+  
+  ;; to textual html again
+  (e/emit* html)
+  ;; => ("<" "html" ">" "<" "body" ">" "<" "div" " " "id" "=\"" "home"
+  ;;.....
+
+  ;; to a string
+  (apply str (e/emit* html))
+  ;; => "<html><body><div id=\"home.....
+
+  ;; enlive is about transformations of seq of nodes to seq of nodes
+  (def date-node (e/select html [:div.date]))
+  ;; => ({:tag :div, :attrs {:class "date"}, :content ("YYYY/MM/DD")})
+
+  ;; tranform applies a transformation to a node
+  (e/transform date-node
+               [:div.date]
+               (fn [match]
+                 (assoc match :content "2012/03/15")))
+  ;; => ({:tag :div, :attrs {:class "date"}, :content "2012/03/15"})
+  
+  ;; the results of a transformation may also be a seq of nodes
+  (e/transform date-node
+               [:div.date]
+               (fn [match-node]
+                 [{:tag "hr" :attrs nil :content []}
+                  {:tag "p" :attrs nil :content "Whole new structure"}]))
+  ;; => ({:tag "hr", :attrs nil, :content []} {:tag "p", :content "Whole new structure", :attrs nil})
+  
+  
+  )
