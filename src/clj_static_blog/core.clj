@@ -44,10 +44,9 @@
                     list-files
                     (filter #(re-find #"\d{4}/\d{2}/\d{2}" (.getAbsolutePath %))))
           :let [path (.getAbsolutePath post-path)
-                [_ YYYY MM DD filename] (re-matches #".*/(\d{4})/(\d{2})/(\d{2})/(.*)" path)]
-          :let [[YYYY MM DD] (map #(Long/parseLong %) [YYYY MM DD])]]
+                [_ YYYY MM DD filename] (re-matches #".*/(\d{4})/(\d{2})/(\d{2})/(.*)" path)]]
       {:date [YYYY MM DD]
-       :date-print (time-format/unparse date-print-format (time/date-time YYYY MM DD))
+       :date-print (time-format/unparse date-print-format (apply time/date-time (map #(Long/parseLong %) [YYYY MM DD])))
        :filename filename
        :path path
        :page-path (str/join "/" [YYYY MM DD filename])})))
@@ -96,7 +95,7 @@
                                     [:title] (e/content post-title)
                                     [:link] (append-attr :href page-path)
                                     [:updated] (let [[YYYY MM DD] date]
-                                                 (e/content (time-print (time/date-time YYYY MM DD))))
+                                                 (e/content (time-print (apply time/date-time (map #(Long/parseLong %) [YYYY MM DD])))))
                                     [:id] (e/append page-path)
                                     [:content] (e/content (render html))))))))
 
@@ -122,7 +121,7 @@
           (let [page (build-post-page template-html post-data)
                 [YYYY MM DD] (:date post-data)
                 filename (:filename post-data)]
-            (write-page (io/file target (str YYYY) (str MM) (str DD)) filename page))))
+            (write-page (io/file target YYYY MM DD) filename page))))
       (let [atom-xml (e/html-resource (io/file source "_atom.xml"))
             feed (build-atom-feed atom-xml posts)]
         (write-page target "atom.xml" feed)))))
