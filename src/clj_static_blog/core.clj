@@ -40,16 +40,21 @@
 (defn collect-posts [source]
   (let [dir (io/file source "posts")]
     (println "Finding posts with YYYY/MM/DD/ path in" (.toURI dir))
-    (for [post-path (->> (io/file source "posts")
-                    list-files
-                    (filter #(re-find #"\d{4}/\d{2}/\d{2}" (.getAbsolutePath %))))
-          :let [path (.getAbsolutePath post-path)
-                [_ YYYY MM DD filename] (re-matches #".*/(\d{4})/(\d{2})/(\d{2})/(.*)" path)]]
-      {:date [YYYY MM DD]
-       :date-print (time-format/unparse date-print-format (apply time/date-time (map #(Long/parseLong %) [YYYY MM DD])))
-       :filename filename
-       :path path
-       :page-path (str/join "/" [YYYY MM DD filename])})))
+    (->> (for [post-path (->> (io/file source "posts")
+                              list-files
+                              (filter #(re-find #"\d{4}/\d{2}/\d{2}" (.getAbsolutePath %))))
+               :let [path (.getAbsolutePath post-path)
+                     [_ YYYY MM DD filename] (re-matches #".*/(\d{4})/(\d{2})/(\d{2})/(.*)" path)]]
+           {:date [YYYY MM DD]
+            :date-print (time-format/unparse date-print-format (apply time/date-time (map #(Long/parseLong %) [YYYY MM DD])))
+            :filename filename
+            :path path
+            :page-path (str/join "/" [YYYY MM DD filename])})
+         (sort-by (fn [post]
+                    (let [[YYYY MM DD] (map #(Long/parseLong %) (:date post))]
+                      (* -1 (+ (* YYYY 10000)
+                               (* MM 100)
+                               DD))))))))
 
 (defn add-post-data [post-data]
   (let [path (:path post-data)
