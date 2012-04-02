@@ -68,6 +68,8 @@
 
 (defn build-post-page [template-html post-data]
   (render (e/at template-html
+                [:title]
+                (e/append (str " - " (:post-title post-data)))
                 [:div#content]
                 (e/content
                  (e/at (:html post-data)
