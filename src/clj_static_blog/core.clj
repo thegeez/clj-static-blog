@@ -17,19 +17,10 @@
 ;;;; end of enlive helpers
 
 (defn list-files [^File root]
-  (loop [files []
-         togo [root]]
-    (if-let [file (first togo)]
-      (cond
-       (.isDirectory file)
-       (recur
-        files
-        (into (rest togo) (doall (map (partial io/file file) (.list file)))))
-       (.isFile file)
-       (recur
-        (conj files file)
-        (rest togo)))
-      files)))
+  (->> (tree-seq #(.isDirectory %)
+                 #(.listFiles %)
+                 root)
+       (filter #(.isFile %))))
 
 (comment
   (list-files (io/file "/home/mfex/Programming/thegeez.github.com/source"))
