@@ -63,23 +63,27 @@
                 (e/append (str " - " (:post-title post-data)))
                 [:div#content]
                 (e/content
-                 (e/at (:html post-data)
-                       [:h1#post-title]
-                       (e/after (:date-print post-data)))))))
+                 (e/select
+                  (e/at (:html post-data)
+                        [:h1#post-title]
+                        (e/after (:date-print post-data)))
+                  [:html :body :> e/any-node])))))
 
 (defn build-index-page [template-html post-list-template posts]
   (render (e/at template-html
                 [:div#content]
                 (e/substitute
-                 (e/at post-list-template
-                       [[:li.entry (e/but e/first-child)]]
-                       (e/substitute)
-                       [[:li.entry e/first-child]]
-                       (e/clone-for [{:keys [date-print post-title page-path]} posts]
-                                    [:div.date] (e/content date-print)
-                                    [:div.post-title :a] (e/do->
-                                                          (e/content post-title)
-                                                          (e/set-attr :href page-path))))))))
+                 (e/select
+                  (e/at post-list-template
+                        [[:li.entry (e/but e/first-child)]]
+                        (e/substitute)
+                        [[:li.entry e/first-child]]
+                        (e/clone-for [{:keys [date-print post-title page-path]} posts]
+                                     [:div.date] (e/content date-print)
+                                     [:div.post-title :a] (e/do->
+                                                           (e/content post-title)
+                                                           (e/set-attr :href page-path))))
+                  [:html :body :> e/any-node])))))
 
 (defn build-atom-feed [template-xml posts]
   (let [time-print #(time-format/unparse (time-format/formatters :date-time-no-ms) %)]
@@ -95,7 +99,9 @@
                                     [:updated] (let [[YYYY MM DD] date]
                                                  (e/content (time-print (apply time/date-time (map #(Long/parseLong %) [YYYY MM DD "23" "00"])))))
                                     [:id] (e/append page-path)
-                                    [:content] (e/content (render html))))))))
+                                    [:content]
+                                    (e/content (e/select html
+                                                         [:html :body :> e/any-node]))))))))
 
 (defn write-page [^File dir filename page]
   (when-not (.exists dir)
@@ -123,40 +129,3 @@
       (let [atom-xml (e/html-resource (io/file source "_atom.xml"))
             feed (build-atom-feed atom-xml posts)]
         (write-page target "atom.xml" feed)))))
-
-(comment
-  ;; html is seq of {:tag :attrs :content}
-  (def html (e/html-resource (io/file "/path/to/source/_postlist.html")))
-  ;; => ({:tag :html, :attrs nil, :content ({:tag :body, :attrs nil,
-  ;; :content ({:tag ...
-  
-  ;; to textual html again
-  (e/emit* html)
-  ;; => ("<" "html" ">" "<" "body" ">" "<" "div" " " "id" "=\"" "home"
-  ;;.....
-
-  ;; to a string
-  (apply str (e/emit* html))
-  ;; => "<html><body><div id=\"home.....
-
-  ;; enlive is about transformations of seq of nodes to seq of nodes
-  (def date-node (e/select html [:div.date]))
-  ;; => ({:tag :div, :attrs {:class "date"}, :content ("YYYY/MM/DD")})
-
-  ;; tranform applies a transformation to a node
-  (e/transform date-node
-               [:div.date]
-               (fn [match]
-                 (assoc match :content "2012/03/15")))
-  ;; => ({:tag :div, :attrs {:class "date"}, :content "2012/03/15"})
-  
-  ;; the results of a transformation may also be a seq of nodes
-  (e/transform date-node
-               [:div.date]
-               (fn [match-node]
-                 [{:tag "hr" :attrs nil :content []}
-                  {:tag "p" :attrs nil :content "Whole new structure"}]))
-  ;; => ({:tag "hr", :attrs nil, :content []} {:tag "p", :content "Whole new structure", :attrs nil})
-  
-  
-  )
