@@ -100,8 +100,9 @@
                                                  (e/content (time-print (apply time/date-time (map #(Long/parseLong %) [YYYY MM DD "23" "00"])))))
                                     [:id] (e/append page-path)
                                     [:content]
-                                    (e/content (e/select html
-                                                         [:html :body :> e/any-node]))))))))
+                                    (e/content
+                                     (render (take 6 (e/select html
+                                                        [:html :body :> e/any-node]))))))))))
 
 (defn write-page [^File dir filename page]
   (when-not (.exists dir)
