@@ -93,7 +93,11 @@
                        [:feed :updated]
                        (e/content (time-print (time/now)))
                        [:entry]
-                       (e/clone-for [{:keys [date post-title page-path html]} posts]
+                       (e/clone-for [{:keys [date post-title page-path html]} posts
+                                     :let [preview-part-count 6
+                                           post-parts (e/select html
+                                                                [:html :body :> e/any-node])
+                                           [preview-parts rest-parts] (split-at preview-part-count post-parts)]]
                                     [:title] (e/content post-title)
                                     [:link] (append-attr :href page-path)
                                     [:updated] (let [[YYYY MM DD] date]
@@ -101,8 +105,12 @@
                                     [:id] (e/append page-path)
                                     [:content]
                                     (e/content
-                                     (render (take 6 (e/select html
-                                                        [:html :body :> e/any-node]))))))))))
+                                     (render (if (seq rest-parts)
+                                               (concat preview-parts
+                                                       [{:tag :a
+                                                         :attrs {:href page-path}
+                                                         :content ["Read more"]}])
+                                               preview-parts)))))))))
 
 (defn write-page [^File dir filename page]
   (when-not (.exists dir)
