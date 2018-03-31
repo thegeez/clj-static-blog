@@ -19,3 +19,6 @@
          wrap-stacktrace
          wrap-generate)
      {:port 4000 :join? false})))
+
+(defn -main [& args]
+  (run-server))
